@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { mockDataService } from "@/lib/services/mock/MockDataService";
+import { supabaseDataService } from "@/lib/services/SupabaseDataService";
 import { Student, Fee, Announcement } from "@/types";
 import Link from "next/link";
 
@@ -10,8 +10,8 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const s = await mockDataService.getStudents();
-      const f = await mockDataService.getAllFees();
+      const s = await supabaseDataService.getStudents();
+      const f = await supabaseDataService.getAllFees();
       setStudents(s);
       setPendingFees(f.filter(fee => fee.status === 'pending' || fee.status === 'overdue'));
     };
@@ -57,7 +57,7 @@ export default function AdminDashboard() {
           const title = (form.elements.namedItem('title') as HTMLInputElement).value;
           const content = (form.elements.namedItem('content') as HTMLTextAreaElement).value;
           if (title && content) {
-            await mockDataService.createAnnouncement({ title, content, authorId: 'admin' });
+            await supabaseDataService.createAnnouncement({ title, content, authorId: 'admin' });
             alert('Announcement Posted!');
             form.reset();
           }

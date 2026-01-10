@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { mockDataService } from "@/lib/services/mock/MockDataService";
+
+import { supabaseDataService } from "@/lib/services/SupabaseDataService";
 import { Student, Announcement } from "@/types";
 import Link from "next/link";
 
@@ -14,11 +15,13 @@ export default function StudentDashboard() {
         const fetchData = async () => {
             if (user) {
                 // In real app, we'd use getCurrentUser or fetch by user.id
-                const allStudents = await mockDataService.getStudents();
-                const found = allStudents.find(s => s.email === user.email);
-                setStudent(found || null);
+                // Note: email might be hidden in real service now, so this check might fail if we don't fix getStudents logic or query differently. 
+                // Better: getStudentById(user.id) since ID should match Auth ID
+                const studentProfile = await supabaseDataService.getStudentById(user.id);
 
-                const ann = await mockDataService.getAnnouncements();
+                setStudent(studentProfile || null);
+
+                const ann = await supabaseDataService.getAnnouncements();
                 setAnnouncements(ann);
             }
         };

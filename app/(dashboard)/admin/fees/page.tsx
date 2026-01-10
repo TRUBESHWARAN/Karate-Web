@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { mockDataService } from "@/lib/services/mock/MockDataService";
+import { supabaseDataService } from "@/lib/services/SupabaseDataService";
 import { Student, Fee } from "@/types";
 
 export default function AdminFeesPage() {
@@ -8,8 +8,8 @@ export default function AdminFeesPage() {
     const [students, setStudents] = useState<Student[]>([]);
 
     const fetchData = async () => {
-        const f = await mockDataService.getAllFees();
-        const s = await mockDataService.getStudents();
+        const f = await supabaseDataService.getAllFees();
+        const s = await supabaseDataService.getStudents();
 
         // Join student names
         const enrichedFees = f.map(fee => ({
@@ -26,7 +26,7 @@ export default function AdminFeesPage() {
     }, []);
 
     const handleMarkPaid = async (feeId: string) => {
-        await mockDataService.updateFeeStatus(feeId, 'paid');
+        await supabaseDataService.updateFeeStatus(feeId, 'paid');
         fetchData();
     };
 
@@ -40,7 +40,7 @@ export default function AdminFeesPage() {
         const amount = Number(formData.get('amount'));
         const month = formData.get('month') as string;
 
-        await mockDataService.createFee({
+        await supabaseDataService.createFee({
             studentId,
             amount,
             month,

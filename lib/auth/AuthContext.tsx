@@ -1,11 +1,12 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { User, Role } from "@/types";
-import { mockDataService } from "@/lib/services/mock/MockDataService";
+import { User } from "@/types";
+import { supabase } from "@/lib/supabase";
+import { supabaseDataService } from "@/lib/services/SupabaseDataService";
 
 interface AuthContextType {
     user: User | null;
-    login: (email: string) => Promise<void>;
+    login: (email: string) => Promise<void>; // Kept for interface compatibility, but we might change usage
     logout: () => void;
     isLoading: boolean;
 }
@@ -17,36 +18,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // Check local storage for session simulation
-        const storedUser = localStorage.getItem("karate_user");
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
-        }
-        setIsLoading(false);
+        const checkUser = async () => {
+            try {
+                const currentUser = await supabaseDataService.getCurrentUser();
+                setUser(currentUser);
+            } catch (e) {
+                console.error("Auth check failed", e);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        checkUser();
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                const currentUser = await supabaseDataService.getCurrentUser();
+                setUser(currentUser);
+            } else if (event === 'SIGNED_OUT') {
+                setUser(null);
+            }
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
 
     const login = async (email: string) => {
-        setIsLoading(true);
-        try {
-            const loggedInUser = await mockDataService.login(email);
-            if (loggedInUser) {
-                setUser(loggedInUser);
-                localStorage.setItem("karate_user", JSON.stringify(loggedInUser));
-            } else {
-                alert("Invalid email (use admin@karate.com or john@karate.com)");
-            }
-        } catch (e) {
-            console.error(e);
-            alert("Login failed");
-        } finally {
-            setIsLoading(false);
-        }
+        // Redundant in Supabase Auth flow usually (since we need password), 
+        // but keeping method signature for now.
+        // In real usage, components should call supabase.auth.signInWithPassword directly 
+        // OR we expose a proper signIn method here.
+        console.warn("Use supabase.auth.signInWithPassword instead of login(email)");
     };
 
-    const logout = () => {
+    const logout = async () => {
+        await supabase.auth.signOut();
         setUser(null);
-        localStorage.removeItem("karate_user");
-        // Redirect logic usually goes here or in the component
         window.location.href = "/";
     };
 
@@ -64,3 +72,4 @@ export const useAuth = () => {
     }
     return context;
 };
+

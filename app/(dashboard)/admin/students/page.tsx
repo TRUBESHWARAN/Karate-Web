@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { mockDataService } from "@/lib/services/mock/MockDataService";
+import { supabaseDataService } from "@/lib/services/SupabaseDataService";
 import { Student } from "@/types";
 
 export default function AdminStudentsPage() {
@@ -19,7 +19,7 @@ export default function AdminStudentsPage() {
     });
 
     const fetchStudents = async () => {
-        const data = await mockDataService.getStudents();
+        const data = await supabaseDataService.getStudents();
         setStudents(data);
     };
 
@@ -31,7 +31,7 @@ export default function AdminStudentsPage() {
         e.preventDefault();
         if (!newStudent.name || !newStudent.email) return;
 
-        await mockDataService.addStudent({
+        await supabaseDataService.addStudent({
             ...newStudent,
             age: Number(newStudent.age),
             joinDate: new Date().toISOString().split('T')[0],
