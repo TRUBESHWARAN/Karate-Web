@@ -1,78 +1,127 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 
 export default function DashboardLayout({
-    children,
+  children,
 }: {
-    children: React.ReactNode;
+  children: React.ReactNode;
 }) {
-    const { user, isLoading, logout } = useAuth();
-    const router = useRouter();
-    const pathname = usePathname();
+  const { user, isLoading, logout } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
 
-    useEffect(() => {
-        if (!isLoading && !user) {
-            router.push('/login');
-        }
-    }, [user, isLoading, router]);
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
-    if (isLoading || !user) {
-        return <div className="loading">Loading Dojo...</div>;
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push('/login');
     }
+  }, [user, isLoading, router]);
 
-    // Role based protection
-    if (pathname.startsWith('/admin') && user.role !== 'admin') {
-        router.push('/student');
-        return null;
-    }
-    if (pathname.startsWith('/student') && user.role !== 'student') {
-        router.push('/admin'); // Or allow admin to view student view? Let's keep strict for now.
-        return null;
-    }
+  if (isLoading || !user) {
+    return <div className="loading">Loading Dojo...</div>;
+  }
 
-    return (
-        <div className="dashboard-layout">
-            <nav className="sidebar">
-                <div className="brand">
-                    <h2>Karate Dojo</h2>
-                    <span className="badge">{user.role.toUpperCase()}</span>
-                </div>
+  // Role based protection
+  if (pathname.startsWith('/admin') && user.role !== 'admin') {
+    router.push('/student');
+    return null;
+  }
+  if (pathname.startsWith('/student') && user.role !== 'student') {
+    router.push('/admin'); // Or allow admin to view student view? Let's keep strict for now.
+    return null;
+  }
 
-                <ul className="nav-links">
-                    {user.role === 'student' && (
-                        <>
-                            <li><Link href="/student" className={pathname === '/student' ? 'active' : ''}>Dashboard</Link></li>
-                            <li><Link href="/student/fees" className={pathname === '/student/fees' ? 'active' : ''}>My Fees</Link></li>
-                        </>
-                    )}
-                    {user.role === 'admin' && (
-                        <>
-                            <li><Link href="/admin" className={pathname === '/admin' ? 'active' : ''}>Dashboard</Link></li>
-                            <li><Link href="/admin/students" className={pathname.startsWith('/admin/students') ? 'active' : ''}>Students</Link></li>
-                            <li><Link href="/admin/fees" className={pathname.startsWith('/admin/fees') ? 'active' : ''}>Fee Management</Link></li>
-                        </>
-                    )}
-                </ul>
+  return (
+    <div className="dashboard-layout">
+      {/* Mobile Header */}
+      <header className="mobile-header">
+        <button
+          className="menu-btn"
+          onClick={() => setSidebarOpen(!isSidebarOpen)}
+          aria-label="Toggle Menu"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 12h18M3 6h18M3 18h18" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <span className="mobile-brand">Karate Dojo</span>
+      </header>
 
-                <div className="user-profile">
-                    <p>{user.name}</p>
-                    <button onClick={logout} className="logout-btn">Sign Out</button>
-                </div>
-            </nav>
+      {/* Sidebar Overlay (Mobile) */}
+      {isSidebarOpen && (
+        <div
+          className="sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-            <main className="content">
-                {children}
-            </main>
+      <nav className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
+        <div className="brand">
+          <h2>Karate Dojo</h2>
+          <span className="badge">{user.role.toUpperCase()}</span>
+        </div>
 
-            <style jsx>{`
+        <ul className="nav-links">
+          {user.role === 'student' && (
+            <>
+              <li><Link href="/student" className={pathname === '/student' ? 'active' : ''}>Dashboard</Link></li>
+              <li><Link href="/student/profile" className={pathname === '/student/profile' ? 'active' : ''}>Profile</Link></li>
+              <li><Link href="/student/fees" className={pathname === '/student/fees' ? 'active' : ''}>My Fees</Link></li>
+            </>
+          )}
+          {user.role === 'admin' && (
+            <>
+              <li><Link href="/admin" className={pathname === '/admin' ? 'active' : ''}>Dashboard</Link></li>
+              <li><Link href="/admin/students" className={pathname.startsWith('/admin/students') ? 'active' : ''}>Students</Link></li>
+              <li><Link href="/admin/fees" className={pathname.startsWith('/admin/fees') ? 'active' : ''}>Fee Management</Link></li>
+            </>
+          )}
+        </ul>
+
+        <div className="user-profile">
+          <p>{user.name}</p>
+          <button onClick={logout} className="logout-btn">Sign Out</button>
+        </div>
+      </nav>
+
+      <main className="content">
+        {children}
+      </main>
+
+      <style jsx>{`
         .dashboard-layout {
           display: flex;
           min-height: 100vh;
           background-color: var(--background-color);
         }
+
+        /* Mobile Header */
+        .mobile-header {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 60px;
+            background: white;
+            border-bottom: 1px solid #E5E7EB;
+            z-index: 40;
+            align-items: center;
+            padding: 0 var(--spacing-lg);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .menu-btn {
+            background: none; border: none; cursor: pointer;
+            padding: 8px; margin-right: 16px;
+        }
+        .mobile-brand { font-weight: 700; color: var(--primary-color); font-size: 1.25rem; }
+
         .sidebar {
           width: 250px;
           background-color: var(--surface-color);
@@ -80,6 +129,8 @@ export default function DashboardLayout({
           display: flex;
           flex-direction: column;
           padding: var(--spacing-lg);
+          transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          z-index: 50;
         }
         .brand {
           margin-bottom: var(--spacing-2xl);
@@ -148,7 +199,33 @@ export default function DashboardLayout({
           color: var(--primary-color);
           font-weight: 600;
         }
+        .sidebar-overlay { display: none; }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            .dashboard-layout { flex-direction: column; padding-top: 60px; }
+            .mobile-header { display: flex; }
+            
+            .sidebar {
+                position: fixed;
+                top: 60px; left: 0; bottom: 0;
+                transform: translateX(-100%);
+                width: 260px;
+                box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+            }
+            .sidebar.open { transform: translateX(0); }
+            
+            .sidebar-overlay {
+                display: block;
+                position: fixed;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 45;
+            }
+
+            .content { padding: var(--spacing-lg); }
+        }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }

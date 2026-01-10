@@ -82,6 +82,8 @@ export class SupabaseDataService implements DataService {
             rank: data.rank,
             joinDate: data.join_date,
             age: data.age,
+            dob: data.dob,
+            bloodGroup: data.blood_group,
             emergencyContact: data.emergency_contact,
             phone: data.phone,
             address: data.address
@@ -112,6 +114,8 @@ export class SupabaseDataService implements DataService {
             .update({
                 rank: updates.rank,
                 age: updates.age,
+                dob: updates.dob,
+                blood_group: updates.bloodGroup,
                 phone: updates.phone,
                 address: updates.address,
                 emergency_contact: updates.emergencyContact

@@ -50,21 +50,22 @@ alter table public.announcements enable row level security;
 -- Public read access for now to simplify (or specific policies)
 create policy "Public profiles are viewable by everyone" on public.profiles for select using (true);
 create policy "Students can view own profile" on public.students for select using (auth.uid() = id);
+create policy "Students can update own profile" on public.students for update using (auth.uid() = id);
+
 create policy "Admins can view all students" on public.students for select using (
   exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
 );
 
 -- Fees
 create policy "Students view own fees" on public.fees for select using (student_id = auth.uid());
-create policy "Admins manage fees" on public.fees for all using (
-  exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
-);
+create policy "Admins manage fees" on public.fees for all 
+  using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'))
+  with check (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
 
 -- Announcements
 create policy "Everyone can view announcements" on public.announcements for select using (true);
-create policy "Admins create announcements" on public.announcements for insert using (
-  exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
-);
+create policy "Admins create announcements" on public.announcements for insert 
+  with check (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
 
 -- TRIGGER to create profile on signup
 create or replace function public.handle_new_user() 

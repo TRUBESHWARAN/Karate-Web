@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
@@ -11,6 +12,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const router = useRouter();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'admin') router.push('/admin');
+      else router.push('/student');
+    }
+  }, [user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,11 +51,7 @@ export default function LoginPage() {
     }
   };
 
-  // Redirect if already logged in
-  if (user) {
-    if (user.role === 'admin') router.push('/admin');
-    else router.push('/student');
-  }
+
 
   return (
     <div className="login-container">
@@ -85,10 +90,13 @@ export default function LoginPage() {
 
         <div className="mode-switch">
           <button type="button" onClick={() => setIsSignUp(!isSignUp)}>
-            {isSignUp ? "Already have an account? Sign In" : "New here? request for Sign Up with admin contact"}
+            {isSignUp ? "Already have an account? Sign In" : "Register to start your journey"}
           </button>
         </div>
 
+        <div className="back-link">
+          <Link href="/">← Back to Home</Link>
+        </div>
       </div>
 
       <style jsx>{`
@@ -169,6 +177,9 @@ export default function LoginPage() {
             cursor: pointer;
             text-decoration: underline;
         }
+        .back-link { margin-top: var(--spacing-lg); }
+        .back-link a { color: var(--text-secondary); text-decoration: none; font-size: 0.9rem; }
+        .back-link a:hover { color: var(--primary-color); }
       `}</style>
     </div>
   );
