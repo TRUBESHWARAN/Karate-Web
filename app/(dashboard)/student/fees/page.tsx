@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { mockDataService } from "@/lib/services/mock/MockDataService";
 import { Student, Fee } from "@/types";
+import { supabaseDataService } from "@/lib/services/SupabaseDataService";
 
 export default function StudentFeesPage() {
     const { user } = useAuth();
@@ -14,7 +14,7 @@ export default function StudentFeesPage() {
                 // Find student ID first (since auth user ID matches student ID in our mock, but in real app usually linked)
                 // Our mock uses same ID for user and student for simplicity in seeding? 
                 // Actually in mock data: User 2 is John, Student 2 is John. Yes.
-                const myFees = await mockDataService.getFeesByStudent(user.id);
+                const myFees = await supabaseDataService.getFeesByStudent(user.id);
                 setFees(myFees);
             }
         };

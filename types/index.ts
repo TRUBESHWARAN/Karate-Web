@@ -12,13 +12,15 @@ export interface Student extends User {
   rank: string; // e.g. "White Belt", "Yellow Belt"
   joinDate: string;
   age: number;
+  dob?: string;
+  bloodGroup?: string;
   emergencyContact: string;
   phone: string;
   address: string;
 }
 
 export interface Admin extends User {
-    role: 'admin';
+  role: 'admin';
 }
 
 export interface Fee {
@@ -29,6 +31,7 @@ export interface Fee {
   status: 'paid' | 'pending' | 'overdue';
   paymentDate?: string;
   dueDate: string;
+  receivedBy?: string;
 }
 
 export interface Announcement {
