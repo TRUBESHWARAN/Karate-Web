@@ -29,6 +29,7 @@ create table public.fees (
   status text check (status in ('paid', 'pending', 'overdue')) default 'pending',
   due_date date,
   payment_date date,
+  received_by text,
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 

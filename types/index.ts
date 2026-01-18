@@ -31,6 +31,7 @@ export interface Fee {
   status: 'paid' | 'pending' | 'overdue';
   paymentDate?: string;
   dueDate: string;
+  receivedBy?: string;
 }
 
 export interface Announcement {

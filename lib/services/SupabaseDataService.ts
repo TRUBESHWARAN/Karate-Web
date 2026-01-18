@@ -126,7 +126,8 @@ export class SupabaseDataService implements DataService {
             amount: f.amount,
             status: f.status,
             dueDate: f.due_date,
-            paymentDate: f.payment_date
+            paymentDate: f.payment_date,
+            receivedBy: f.received_by
         }));
     }
 
@@ -140,13 +141,20 @@ export class SupabaseDataService implements DataService {
             amount: f.amount,
             status: f.status,
             dueDate: f.due_date,
-            paymentDate: f.payment_date
+            paymentDate: f.payment_date,
+            receivedBy: f.received_by
         }));
     }
 
-    async updateFeeStatus(feeId: string, status: Fee['status']): Promise<Fee> {
+    async updateFeeStatus(feeId: string, status: Fee['status'], receivedBy?: string): Promise<Fee> {
         const updates: any = { status };
-        if (status === 'paid') updates.payment_date = new Date().toISOString();
+        if (status === 'paid') {
+            updates.payment_date = new Date().toISOString();
+            if (receivedBy) updates.received_by = receivedBy;
+        } else {
+            updates.payment_date = null;
+            updates.received_by = null;
+        }
 
         const { data, error } = await supabase
             .from('fees')
@@ -163,8 +171,78 @@ export class SupabaseDataService implements DataService {
             amount: data.amount,
             status: data.status,
             dueDate: data.due_date,
-            paymentDate: data.payment_date
+            paymentDate: data.payment_date,
+            receivedBy: data.received_by
         };
+    }
+
+    // Ensures that every student has a fee record for the specified month
+    async ensureFeesForMonth(monthStr: string): Promise<void> {
+        const students = await this.getStudents();
+        const { data: existingFees } = await supabase
+            .from('fees')
+            .select('student_id')
+            .eq('month', monthStr);
+
+        const existingStudentIds = new Set((existingFees || []).map((f: any) => f.student_id));
+        const feesToInsert: any[] = [];
+
+        // Calculate due date (end of the specified month)
+        // monthStr format: "MonthName YYYY" e.g. "January 2026"
+        const [mName, yStr] = monthStr.split(' ');
+        const monthIndex = new Date(`${mName} 1, 2000`).getMonth();
+        const year = parseInt(yStr);
+        const dueDate = new Date(year, monthIndex + 1, 0).toISOString(); // Last day of month
+
+        students.forEach(student => {
+            // Check if student joined before or during this month
+            // monthIndex is 0-based index of selected month
+            // year is selected year
+            const monthStart = new Date(year, monthIndex, 1);
+            const studentJoin = new Date(student.joinDate);
+
+            // Only generate if student joined before the end of this month
+            // Actually user requirement: "If student.join_date <= selected_month_start"
+            // Let's be lenient: if joined in this month, they pay.
+            // So if joinDate < nextMonthStart
+
+            if (!existingStudentIds.has(student.id)) {
+                // Parse join date safely
+                if (!isNaN(studentJoin.getTime()) && studentJoin <= new Date(year, monthIndex + 1, 0)) {
+                    feesToInsert.push({
+                        student_id: student.id,
+                        month: monthStr,
+                        amount: 500, // Default fee
+                        status: 'pending',
+                        due_date: dueDate
+                    });
+                }
+            }
+        });
+
+        if (feesToInsert.length > 0) {
+            const { error } = await supabase.from('fees').insert(feesToInsert);
+            if (error) console.error("Error creating monthly fees:", error);
+        }
+    }
+
+    async getFeesByMonth(monthStr: string): Promise<Fee[]> {
+        const { data, error } = await supabase
+            .from('fees')
+            .select('*')
+            .eq('month', monthStr);
+
+        if (error || !data) return [];
+        return data.map((f: any) => ({
+            id: f.id,
+            studentId: f.student_id,
+            month: f.month,
+            amount: f.amount,
+            status: f.status,
+            dueDate: f.due_date,
+            paymentDate: f.payment_date,
+            receivedBy: f.received_by
+        }));
     }
 
     async createFee(fee: Omit<Fee, 'id'>): Promise<Fee> {
@@ -228,6 +306,43 @@ export class SupabaseDataService implements DataService {
             createdAt: data.created_at,
             authorId: data.author_id
         };
+    }
+
+    async cleanupDuplicateFees(): Promise<number> {
+        const { data: fees, error } = await supabase.from('fees').select('*');
+        if (error || !fees) return 0;
+
+        const uniqueMap = new Map<string, any>();
+        const duplicatesToDelete: string[] = [];
+
+        fees.forEach(fee => {
+            const key = `${fee.student_id}-${fee.month}`;
+            if (uniqueMap.has(key)) {
+                const existing = uniqueMap.get(key);
+                // Keep the one that is 'paid' or has later created_at if both same status
+                // If existing is paid, keep it, mark current as delete
+                // If current is paid and existing is not, keep current, mark existing delete
+                // If both same, keep existing (arbitrary, or by updated_at?)
+
+                if (existing.status === 'paid' && fee.status !== 'paid') {
+                    duplicatesToDelete.push(fee.id);
+                } else if (fee.status === 'paid' && existing.status !== 'paid') {
+                    duplicatesToDelete.push(existing.id);
+                    uniqueMap.set(key, fee);
+                } else {
+                    // Both paid or both pending -> delete valid duplicate
+                    duplicatesToDelete.push(fee.id);
+                }
+            } else {
+                uniqueMap.set(key, fee);
+            }
+        });
+
+        if (duplicatesToDelete.length > 0) {
+            await supabase.from('fees').delete().in('id', duplicatesToDelete);
+        }
+
+        return duplicatesToDelete.length;
     }
 }
 
